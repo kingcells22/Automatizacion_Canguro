@@ -1,0 +1,18 @@
+# Bases de datos
+db/
+*.db
+*.sqlite3
+
+# Archivos compilados de Python
+__pycache__/
+*.pyc
+
+# Archivos de Excel, CSV y PDFs de prueba
+*.xlsx
+*.xls
+*.csv
+*.pdf
+
+# Entorno virtual
+.venv
+venv
