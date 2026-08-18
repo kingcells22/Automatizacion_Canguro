@@ -16,3 +16,7 @@ __pycache__/
 # Entorno virtual
 .venv
 venv
+
+# Omitir estos archivos
+generar_informe_pdf.py
+Informe_Ejecutivo_Avances_Dashboard_Canguro.md
