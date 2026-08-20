@@ -83,7 +83,7 @@ class CierreContableApp(ctk.CTk):
         self.ruta_ingresos = None
         self.ruta_edr = None
         self.ruta_promedios = None
-        self.ruta_maestro = None
+        self.ruta_empleados = None
 
     def _configurar_estilos_treeview(self):
         style = ttk.Style(self)
@@ -126,8 +126,14 @@ class CierreContableApp(ctk.CTk):
         ruta_logo = os.path.join(os.path.dirname(os.path.realpath(__file__)), "assets", "logo.png")
         if os.path.exists(ruta_logo):
             logo_img = ctk.CTkImage(Image.open(ruta_logo), size=(100, 100))
-            self.logo_label = ctk.CTkLabel(self.sidebar_frame, text="", image=logo_img)
-            self.logo_label.grid(row=0, column=0, padx=20, pady=(5, 0))
+        self.header_sidebar = ctk.CTkFrame(self.sidebar_frame, fg_color="transparent")
+        self.header_sidebar.grid(row=0, column=0, padx=20, pady=(20, 10), sticky="ew")
+        
+        self.logo_label = ctk.CTkLabel(self.header_sidebar, text="", image=logo_img if os.path.exists(ruta_logo) else None)
+        self.logo_label.pack(side="left", expand=True)
+        
+        self.btn_toggle_in_sidebar = ctk.CTkButton(self.header_sidebar, text="☰", width=30, fg_color="transparent", hover_color="#333333", font=("Roboto", 18), command=self.toggle_sidebar)
+        self.btn_toggle_in_sidebar.pack(side="right")
         
         self.titulo_label = ctk.CTkLabel(self.sidebar_frame, text="MOTOR DE CIERRE", font=("Roboto", 16, "bold"), text_color=CANGURO_YELLOW)
         self.titulo_label.grid(row=1, column=0, padx=20, pady=(0, 5))
@@ -147,11 +153,8 @@ class CierreContableApp(ctk.CTk):
         self.btn_promedio = ctk.CTkButton(self.sidebar_frame, text="📄 Excel Promedios", fg_color="#333333", hover_color="#555555", command=lambda: self.cargar_archivo("promedios"))
         self.btn_promedio.grid(row=6, column=0, padx=20, pady=2, sticky="ew")
 
-        self.btn_maestro = ctk.CTkButton(self.sidebar_frame, text="📄 Plan/Maestro Cuentas", fg_color="#1F4E79", hover_color="#296296", command=lambda: self.cargar_archivo("maestro"))
-        self.btn_maestro.grid(row=7, column=0, padx=20, pady=(2, 0), sticky="ew")
-
-        self.btn_add_codigo = ctk.CTkButton(self.sidebar_frame, text="➕ Añadir Código Manual", fg_color="transparent", border_width=1, border_color="#555555", text_color="#AAAAAA", hover_color="#333333", command=self.agregar_codigo_manual)
-        self.btn_add_codigo.grid(row=8, column=0, padx=20, pady=(2, 5), sticky="ew")
+        self.btn_empleados = ctk.CTkButton(self.sidebar_frame, text="👥 Excel Empleados", fg_color="#1F4E79", hover_color="#296296", command=lambda: self.cargar_archivo("empleados"))
+        self.btn_empleados.grid(row=7, column=0, padx=20, pady=(2, 0), sticky="ew")
 
         self.btn_limpiar = ctk.CTkButton(self.sidebar_frame, text="🧹 Limpiar Archivos", fg_color="transparent", border_width=1, border_color="#888888", text_color="#888888", hover_color="#333333", command=self.limpiar_ui)
         self.btn_limpiar.grid(row=9, column=0, padx=20, pady=(2, 10), sticky="ew")
@@ -190,22 +193,37 @@ class CierreContableApp(ctk.CTk):
         self.btn_terminal = ctk.CTkButton(self.sidebar_frame, text="💻 TERMINAL / LOGS", fg_color="#333333", hover_color="#555555", command=self.mostrar_terminal)
         self.btn_terminal.grid(row=18, column=0, padx=20, pady=(2, 5), sticky="ew")
 
-        # EL BOTON CERRAR QUE HABIA ELIMINADO. YA ESTÁ DE VUELTA.
         self.btn_salir = ctk.CTkButton(self.sidebar_frame, text="✖ CERRAR", fg_color=BTN_DANGER, hover_color=BTN_DANGER_HOVER, font=("Roboto", 12, "bold"), command=self.cerrar_app)
         self.btn_salir.grid(row=19, column=0, padx=20, pady=(2, 15), sticky="ew")
+
+    def toggle_sidebar(self):
+        if self.sidebar_frame.winfo_viewable():
+            self.sidebar_frame.grid_remove()
+            self.btn_toggle_sidebar.pack(side="left", padx=10)
+        else:
+            self.sidebar_frame.grid()
+            self.btn_toggle_sidebar.pack_forget()
 
     def _crear_area_principal(self):
         self.main_frame = ctk.CTkFrame(self, fg_color="transparent")
         self.main_frame.grid(row=0, column=1, padx=20, pady=20, sticky="nsew")
         self.main_frame.grid_columnconfigure(0, weight=1)
-        self.main_frame.grid_rowconfigure(0, weight=1)
+        self.main_frame.grid_rowconfigure(0, weight=0)
+        self.main_frame.grid_rowconfigure(1, weight=1)
+
+        self.top_bar = ctk.CTkFrame(self.main_frame, height=30, fg_color="transparent")
+        self.top_bar.grid(row=0, column=0, sticky="ew", pady=(0, 10))
+        self.btn_toggle_sidebar = ctk.CTkButton(self.top_bar, text="☰", width=40, fg_color="transparent", hover_color="#333333", font=("Roboto", 18), command=self.toggle_sidebar)
+        # Inicia oculto porque el sidebar inicia visible
+        self.btn_toggle_sidebar.pack_forget()
 
         self.tab_view = ctk.CTkTabview(self.main_frame, fg_color=CANGURO_DARK_GREY, segmented_button_selected_color=CANGURO_YELLOW, segmented_button_selected_hover_color=CANGURO_YELLOW_HOVER, text_color=CANGURO_TEXT_DARK)
-        self.tab_view.grid(row=0, column=0, sticky="nsew")
+        self.tab_view.grid(row=1, column=0, sticky="nsew")
         
         self.tab_ingresos = self.tab_view.add("Auditoría Ingresos")
         self.tab_edr = self.tab_view.add("Auditoría EDR")
         self.tab_cierre = self.tab_view.add("Estado Resultados y Rentabilidad")
+        self.tab_empleados = self.tab_view.add("RRHH / Empleados")
         self.tab_dashboards = self.tab_view.add("Dashboards Visuales (BI)")
 
         self.frame_t1, self.tree_ingresos = self._crear_arbol(self.tab_ingresos)
@@ -218,6 +236,9 @@ class CierreContableApp(ctk.CTk):
         self.btn_ajuste_pct.pack(anchor="w", pady=(0, 5))
         self.frame_t3, self.tree_cierre = self._crear_arbol(self.tab_cierre)
         self.frame_t3.pack(fill="both", expand=True)
+
+        self.frame_t4, self.tree_empleados = self._crear_arbol(self.tab_empleados)
+        self.frame_t4.pack(fill="both", expand=True)
         
         # --- ZONA DASHBOARDS (BI) ---
         self.tab_dashboards.grid_columnconfigure(0, weight=1)
@@ -233,8 +254,11 @@ class CierreContableApp(ctk.CTk):
         self.combo_periodo = ctk.CTkComboBox(self.dash_filter_frame, values=["Periodo Actual"], width=120)
         self.combo_periodo.pack(side="left", padx=5)
         
-        self.combo_ciudad = ctk.CTkComboBox(self.dash_filter_frame, values=["Todas las Ciudades"], width=220, command=lambda _: self.aplicar_filtro_dash())
+        self.combo_ciudad = ctk.CTkComboBox(self.dash_filter_frame, values=["Todas las Ciudades"], width=220, command=self._on_ciudad_selected)
         self.combo_ciudad.pack(side="left", padx=5)
+        
+        self.combo_region = ctk.CTkComboBox(self.dash_filter_frame, values=["Todas las Regiones"], width=180, command=self._on_region_selected)
+        self.combo_region.pack(side="left", padx=5)
         
         self.btn_filtrar = ctk.CTkButton(self.dash_filter_frame, text="🔍 Aplicar Filtro", fg_color="#1F4E79", width=100, command=self.aplicar_filtro_dash)
         self.btn_filtrar.pack(side="left", padx=5)
@@ -368,7 +392,7 @@ class CierreContableApp(ctk.CTk):
         archivo = filedialog.askopenfilename(title=f"Seleccionar Archivo {tipo.upper()}", filetypes=[("Archivos", "*.csv *.xlsx *.xls")])
         if not archivo: return
         
-        rutas_activas = {"bifrost": self.ruta_bifrost, "ingresos": self.ruta_ingresos, "edr": self.ruta_edr, "promedios": self.ruta_promedios, "maestro": self.ruta_maestro}
+        rutas_activas = {"bifrost": self.ruta_bifrost, "ingresos": self.ruta_ingresos, "edr": self.ruta_edr, "promedios": self.ruta_promedios, "empleados": self.ruta_empleados}
         for key, path in rutas_activas.items():
             if path == archivo:
                 messagebox.showerror("Archivo Duplicado", f"Ya subiste este archivo en el botón de '{key.upper()}'.\nNo puedes usar el mismo archivo para dos cosas distintas.")
@@ -383,14 +407,11 @@ class CierreContableApp(ctk.CTk):
                 
             cols = [str(c).upper() for c in df_test.columns]
             
-            if tipo == "maestro" and len(cols) > 4:
-                messagebox.showerror("Error Semántico", "El Maestro de Cuentas debe tener solo 2 columnas (Código y Nombre).\nEstás intentando subir un archivo gigante.")
-                return
-            elif tipo == "bifrost" and len(cols) <= 2:
-                messagebox.showerror("Error Semántico", "Este archivo solo tiene 2 columnas. Parece ser el Maestro de Cuentas, NO el reporte crudo.")
+            if tipo == "bifrost" and len(cols) <= 2:
+                messagebox.showerror("Error Semántico", "Este archivo solo tiene 2 columnas. Parece ser un Maestro de Cuentas, NO el reporte crudo.")
                 return
             elif tipo == "ingresos" and not any(x in c for c in cols for x in ["MONTO", "USD", "MONEDA", "TRANSACCION"]):
-                messagebox.showwarning("Advertencia", "Este archivo no parece contener las columnas de ingresos de Wilker.")
+                messagebox.showwarning("Advertencia", "Este archivo no parece contener las columnas de ingresos.")
         except Exception:
             pass 
 
@@ -406,9 +427,9 @@ class CierreContableApp(ctk.CTk):
         elif tipo == "promedios":
             self.ruta_promedios = archivo
             self.btn_promedio.configure(text="✅ Promedios", fg_color="#2E8B57")
-        elif tipo == "maestro":
-            self.ruta_maestro = archivo
-            self.btn_maestro.configure(text="✅ Maestro", fg_color="#2E8B57")
+        elif tipo == "empleados":
+            self.ruta_empleados = archivo
+            self.btn_empleados.configure(text="✅ Empleados", fg_color="#2E8B57")
             
         self.log(f"[ARCHIVO] {tipo.upper()} enrutado con éxito.")
 
@@ -418,12 +439,13 @@ class CierreContableApp(ctk.CTk):
         self.btn_excel.configure(text="📄 CSV Ingresos", fg_color="#333333")
         self.btn_edr.configure(text="📄 Excel EDR", fg_color="#333333")
         self.btn_promedio.configure(text="📄 Excel Promedios", fg_color="#333333")
-        self.btn_maestro.configure(text="📄 Plan/Maestro Cuentas", fg_color="#1F4E79")
+        self.btn_empleados.configure(text="👥 Excel Empleados", fg_color="#1F4E79")
         self.porcentajes_manuales.clear()
         
         self.tree_ingresos.delete(*self.tree_ingresos.get_children())
         self.tree_edr.delete(*self.tree_edr.get_children())
         self.tree_cierre.delete(*self.tree_cierre.get_children())
+        self.tree_empleados.delete(*self.tree_empleados.get_children())
         self.df_actual = None
         if self.canvas_dash: 
             self.canvas_dash.get_tk_widget().destroy()
@@ -434,12 +456,15 @@ class CierreContableApp(ctk.CTk):
     def _llenar_tabla(self, treeview, df):
         treeview.delete(*treeview.get_children())
         if df.empty: return
-        treeview["column"] = list(df.columns)
+        
+        col_ids = [f"col_{i}" for i in range(len(df.columns))]
+        treeview["column"] = col_ids
         treeview["show"] = "headings"
-        for column in treeview["column"]:
-            treeview.heading(column, text=str(column).upper(), anchor="w")
-            max_data = df[column].astype(str).map(len).max() if not df[column].empty else 0
-            treeview.column(column, width=max(min(max(max_data, len(str(column))) * 10, 350), 100), anchor="w", stretch=False)
+        for i, column in enumerate(df.columns):
+            cid = col_ids[i]
+            treeview.heading(cid, text=str(column).upper(), anchor="w")
+            max_data = df[column].fillna("").astype(str).map(len).max() if not df[column].empty else 0
+            treeview.column(cid, width=max(min(max(max_data, len(str(column))) * 10, 350), 100), anchor="w", stretch=False)
         treeview.tag_configure("oddrow", background="#222222")
         treeview.tag_configure("evenrow", background="#161616")
         for i, row in enumerate(df.itertuples(index=False)):
@@ -454,19 +479,10 @@ class CierreContableApp(ctk.CTk):
         self.periodo_actual = periodo
 
         if not recalcular:
-            for tree in [self.tree_ingresos, self.tree_edr, self.tree_cierre]: tree.delete(*tree.get_children())
+            for tree in [self.tree_ingresos, self.tree_edr, self.tree_cierre, self.tree_empleados]: tree.delete(*tree.get_children())
 
-            if not self.ruta_maestro and any([self.ruta_bifrost, self.ruta_ingresos, self.ruta_edr, self.ruta_promedios]):
-                try:
-                    conn = sqlite3.connect(self.db_path)
-                    if conn.cursor().execute("SELECT name FROM sqlite_master WHERE type='table' AND name='maestro_cuentas'").fetchone():
-                        if messagebox.askyesno("Maestro", "No subiste un Plan de Cuentas nuevo.\n\n¿Usar el de la memoria del sistema?"):
-                            self.log("[SISTEMA] Utilizando Maestro Histórico.")
-                    conn.close()
-                except: pass
-
-            if any([self.ruta_bifrost, self.ruta_ingresos, self.ruta_edr, self.ruta_promedios, self.ruta_maestro]):
-                if not main.ingestar_datos(periodo, self.ruta_ingresos, self.ruta_bifrost, self.ruta_edr, self.ruta_promedios, self.ruta_maestro, log_callback=self.log):
+            if any([self.ruta_bifrost, self.ruta_ingresos, self.ruta_edr, self.ruta_promedios, self.ruta_empleados]):
+                if not main.ingestar_datos(periodo, self.ruta_ingresos, self.ruta_bifrost, self.ruta_edr, self.ruta_promedios, self.ruta_empleados, log_callback=self.log):
                     messagebox.showerror("Error", "Falló la ingesta. Revise la terminal.")
                     return
             else:
@@ -476,19 +492,34 @@ class CierreContableApp(ctk.CTk):
         try:
             conn = sqlite3.connect(self.db_path)
             if not recalcular:
-                try: self._llenar_tabla(self.tree_ingresos, pd.read_sql_query("SELECT * FROM historico_ingresos WHERE periodo_carga = ? LIMIT 100", conn, params=(periodo,)))
+                try: 
+                    df_ingresos = pd.read_sql_query("SELECT * FROM historico_ingresos WHERE periodo_carga = ? LIMIT 100", conn, params=(periodo,))
+                    if 'periodo_carga' in df_ingresos.columns: df_ingresos.drop(columns=['periodo_carga'], inplace=True)
+                    self._llenar_tabla(self.tree_ingresos, df_ingresos)
                 except: pass
-                try: self._llenar_tabla(self.tree_edr, pd.read_sql_query("SELECT * FROM historico_bifrost WHERE periodo_carga = ? LIMIT 100", conn, params=(periodo,)))
+                try: 
+                    df_bifrost = pd.read_sql_query("SELECT * FROM historico_bifrost WHERE periodo_carga = ? LIMIT 100", conn, params=(periodo,))
+                    if 'periodo_carga' in df_bifrost.columns: df_bifrost.drop(columns=['periodo_carga'], inplace=True)
+                    self._llenar_tabla(self.tree_edr, df_bifrost)
                 except: pass
+                try: 
+                    df_empleados = pd.read_sql_query("SELECT * FROM historico_empleados WHERE periodo_carga = ? LIMIT 100", conn, params=(periodo,))
+                    if 'periodo_carga' in df_empleados.columns: df_empleados.drop(columns=['periodo_carga'], inplace=True)
+                    self._llenar_tabla(self.tree_empleados, df_empleados)
+                except Exception as e: 
+                    print(f"Error cargando tabla empleados: {e}")
+                    import traceback
+                    traceback.print_exc()
 
             df_resultado = main.calcular_rentabilidad(periodo, self.db_path, self.porcentajes_manuales, log_callback=self.log)
             if not df_resultado.empty:
                 self.df_actual = df_resultado 
                 self._llenar_tabla(self.tree_cierre, df_resultado)
                 self._actualizar_filtros_combobox(conn, df_resultado)
-                self._dibujar_dashboards(df_resultado, periodo)
+                self._dibujar_dashboards(df_resultado, periodo, tienda_seleccionada=None if self.combo_ciudad.get() == "Todas las Ciudades" else self.combo_ciudad.get())
             else:
                 self.log("[INFO] Sin rentabilidad generada.")
+                
         except Exception as e: self.log(f"[ERROR CRÍTICO] {e}")
         finally:
             if conn: conn.close()
@@ -508,6 +539,21 @@ class CierreContableApp(ctk.CTk):
         self.combo_ciudad.configure(values=tiendas)
         self.combo_ciudad.set("Todas las Ciudades")
 
+        import regiones
+        regs = ["Todas las Regiones"] + sorted(list(set(regiones.REGIONES.values())))
+        self.combo_region.configure(values=regs)
+        self.combo_region.set("Todas las Regiones")
+
+    def _on_ciudad_selected(self, val):
+        if val != "Todas las Ciudades":
+            self.combo_region.set("Todas las Regiones")
+        self.aplicar_filtro_dash()
+
+    def _on_region_selected(self, val):
+        if val != "Todas las Regiones":
+            self.combo_ciudad.set("Todas las Ciudades")
+        self.aplicar_filtro_dash()
+
     def aplicar_filtro_dash(self):
         """Recalcula el dashboard si escogen una sola ciudad o un mes viejo"""
         if self.df_actual is None or self.df_actual.empty:
@@ -515,6 +561,7 @@ class CierreContableApp(ctk.CTk):
         
         per_sel = self.combo_periodo.get()
         ciu_sel = self.combo_ciudad.get()
+        reg_sel = self.combo_region.get()
 
         if per_sel != self.periodo_actual:
             self.periodo_entry.delete(0, 'end')
@@ -523,10 +570,16 @@ class CierreContableApp(ctk.CTk):
             return
 
         df_filtro = self.df_actual.copy()
+        
+        import regiones
+        df_filtro['REGION'] = df_filtro['CENTRO DE COSTO / TIENDA'].map(regiones.REGIONES).fillna("OTRO")
+        
         tienda_sel = None
         if ciu_sel != "Todas las Ciudades":
             tienda_sel = ciu_sel
             df_filtro = df_filtro[df_filtro['CENTRO DE COSTO / TIENDA'] == ciu_sel]
+        elif reg_sel != "Todas las Regiones":
+            df_filtro = df_filtro[df_filtro['REGION'] == reg_sel]
             
         self._dibujar_dashboards(df_filtro, per_sel, tienda_seleccionada=tienda_sel)
 
@@ -576,7 +629,7 @@ class CierreContableApp(ctk.CTk):
         # Configurar la Cuadrícula: Margen superior optimizado para que los títulos nunca se corten
         gs = gridspec.GridSpec(2, 4, figure=fig, height_ratios=[1.60, 1.0], left=0.015, right=0.985, top=0.92, bottom=0.07, wspace=0.18, hspace=0.25)
 
-        cols_base = ['CENTRO DE COSTO / TIENDA', 'INGRESOS TOTALES (USD)', '% IMPACTO', 'GASTO APLICADO (PRORRATEO)']
+        cols_base = ['CENTRO DE COSTO / TIENDA', 'INGRESOS TOTALES (USD)', '% IMPACTO', 'GASTO APLICADO (PRORRATEO)', 'REGION', 'ingreso', 'otros_ingresos', 'costo_directo']
         gastos_cols = [c for c in df.columns if c not in cols_base and c != '% IMPACTO NUM']
 
         df_plot = df.copy()
@@ -597,7 +650,10 @@ class CierreContableApp(ctk.CTk):
         
         if tienda_seleccionada and self.df_actual is not None and len(self.df_actual) > 1:
             df_trend = self.df_actual.head(15).copy().reset_index(drop=True)
-            df_trend['CORTA'] = df_trend['CENTRO DE COSTO / TIENDA'].apply(lambda x: str(x).split('-')[-1].strip() if '-' in str(x) else str(x))
+            def _corta_nombre(x):
+                s = str(x).split('-')[-1].strip() if '-' in str(x) else str(x)
+                return s[:12] + '..' if len(s) > 12 else s
+            df_trend['CORTA'] = df_trend['CENTRO DE COSTO / TIENDA'].apply(_corta_nombre)
             x = np.arange(len(df_trend))
             y = df_trend['INGRESOS TOTALES (USD)']
             
@@ -618,18 +674,21 @@ class CierreContableApp(ctk.CTk):
                                  arrowprops=dict(arrowstyle="->", color=C_YELLOW))
                                  
             ax_area.set_xticks(x)
-            ax_area.set_xticklabels(df_trend['CORTA'], rotation=20, ha='right', fontsize=6.5, color='#CCCCCC')
+            ax_area.set_xticklabels(df_trend['CORTA'], rotation=40, ha='right', fontsize=6.5, color='#CCCCCC')
             ax_area.set_title("Comparativa de Tendencia (Top Tiendas)", color='white', pad=10, fontweight='bold', loc='left')
         else:
             df_trend = df_plot.head(15).copy().reset_index(drop=True)
-            df_trend['CORTA'] = df_trend['CENTRO DE COSTO / TIENDA'].apply(lambda x: str(x).split('-')[-1].strip() if '-' in str(x) else str(x))
+            def _corta_nombre2(x):
+                s = str(x).split('-')[-1].strip() if '-' in str(x) else str(x)
+                return s[:12] + '..' if len(s) > 12 else s
+            df_trend['CORTA'] = df_trend['CENTRO DE COSTO / TIENDA'].apply(_corta_nombre2)
             x = np.arange(len(df_trend))
             y = df_trend['INGRESOS TOTALES (USD)']
             
             ax_area.plot(x, y, color=C_CYAN, lw=2)
             ax_area.fill_between(x, y, 0, color=C_CYAN, alpha=0.2)
             ax_area.set_xticks(x)
-            ax_area.set_xticklabels(df_trend['CORTA'], rotation=20, ha='right', fontsize=6.5, color='#CCCCCC')
+            ax_area.set_xticklabels(df_trend['CORTA'], rotation=40, ha='right', fontsize=6.5, color='#CCCCCC')
             ax_area.set_title("Curva de Tendencia de Ingresos", color='white', pad=10, fontweight='bold', loc='left')
 
         ax_area.tick_params(axis='y', labelsize=8, colors='#CCCCCC')
@@ -652,9 +711,10 @@ class CierreContableApp(ctk.CTk):
         def draw_donut(ax, sizes, labels, colors, title, center_top=None, center_sub=None):
             ax.clear()
             ax.set_facecolor(CHART_BG)
-            total_s = sum(sizes) if sizes else 0
+            sizes_clean = [max(0, float(s)) for s in sizes] if sizes else []
+            total_s = sum(sizes_clean)
             
-            if not sizes or total_s <= 0:
+            if not sizes_clean or total_s <= 0:
                 ax.pie([1], colors=['#262626'], radius=0.82, wedgeprops=dict(width=0.30, edgecolor=CHART_BG))
                 if center_top:
                     ax.text(0, 0.08, str(center_top), ha='center', va='center', color='#999999', fontsize=8.0, fontweight='bold')
@@ -667,7 +727,7 @@ class CierreContableApp(ctk.CTk):
                 return
 
             ax.pie(
-                sizes,
+                sizes_clean,
                 colors=colors,
                 radius=0.82,
                 wedgeprops=dict(width=0.30, edgecolor=CHART_BG)
@@ -703,37 +763,68 @@ class CierreContableApp(ctk.CTk):
             labs_d1 = [f"Top 3: {fmt_monto(top3_rev)} ({p_top3:.1f}%)", f"Resto: {fmt_monto(resto_rev)} ({p_resto:.1f}%)"]
             draw_donut(ax_d1, [top3_rev, resto_rev], labs_d1, [C_YELLOW, '#383838'], "Concentración Ingresos", center_top="Top 3", center_sub=f"{p_top3:.1f}%")
 
-        # Dona 2: Estructura de Gasto
+        # Grafico 2: RRHH - Top Tiendas por Empleados (Ocupa el lugar de Dona 2)
         ax_d2 = fig.add_subplot(gs[1, 1])
-        tot_prorr = df_plot['GASTO APLICADO (PRORRATEO)'].sum()
-        tot_dir = df_plot[gastos_cols].sum().sum() if gastos_cols else 0
-        tot_gasto = tot_prorr + tot_dir
-        if tot_gasto <= 0:
-            draw_donut(ax_d2, [], [f"Gastos Totales: {fmt_monto(0)} (0.0%)"], [], "Estructura de Gasto", center_top="Sin Gastos", center_sub="$0.00")
-        else:
-            p_pro = (tot_prorr / tot_gasto * 100) if tot_gasto > 0 else 0
-            p_dir = (tot_dir / tot_gasto * 100) if tot_gasto > 0 else 0
-            labs_d2 = [f"Corp: {fmt_monto(tot_prorr)} ({p_pro:.1f}%)", f"Directo: {fmt_monto(tot_dir)} ({p_dir:.1f}%)"]
-            draw_donut(ax_d2, [tot_prorr, tot_dir], labs_d2, [C_LIME, C_MAGENTA], "Estructura de Gasto", center_top="Gastos", center_sub=fmt_monto(tot_gasto))
-
-        # Dona 3: Distribución Contable
+        ax_d2.set_facecolor(CHART_BG)
+        # Grafico 3: RRHH - Empleados por Región (Ocupa el lugar de Dona 3)
         ax_d3 = fig.add_subplot(gs[1, 2])
-        if gastos_cols and df_plot[gastos_cols].sum().sum() > 0:
-            sg = df_plot[gastos_cols].sum().sort_values(ascending=False)
-            top2 = sg.head(2)
-            otros = sg.iloc[2:].sum() if len(sg) > 2 else 0
-            total_c = sg.sum()
-            vals_d3 = list(top2.values) + ([otros] if otros > 0 else [])
-            labs_d3 = [f"{str(k)[:10]}: {fmt_monto(v)} ({(v/total_c*100):.1f}%)" for k, v in top2.items()]
-            if otros > 0:
-                labs_d3.append(f"Otros: {fmt_monto(otros)} ({(otros/total_c*100):.1f}%)")
-            draw_donut(ax_d3, vals_d3, labs_d3, [C_CYAN, C_MAGENTA, '#555555'][:len(vals_d3)], "Distribución Contable", center_top="Cuentas", center_sub=fmt_monto(total_c))
-        else:
-            draw_donut(ax_d3, [], [f"Clasificados: {fmt_monto(0)}"], [], "Distribución Contable", center_top="Sin Cuentas", center_sub="0 Cat.")
+        ax_d3.set_facecolor(CHART_BG)
+
+        try:
+            import main
+            import regiones
+            df_tiendas, _ = main.obtener_datos_dashboard(periodo, self.db_path)
+            
+            has_data = False
+            if df_tiendas is not None and not df_tiendas.empty:
+                tiendas_activas = df['CENTRO DE COSTO / TIENDA'].unique()
+                df_t_filt = df_tiendas[df_tiendas['Tienda'].isin(tiendas_activas)].copy()
+                
+                if not df_t_filt.empty:
+                    has_data = True
+                    # Preparar data ax_d2
+                    df_top = df_t_filt.sort_values('Cantidad', ascending=False).head(15)
+                    x_pos = np.arange(len(df_top))
+                    ax_d2.bar(x_pos, df_top['Cantidad'], color=C_CYAN, width=0.6)
+                    short_names = df_top['Tienda'].apply(lambda x: str(x).split('-')[-1].strip() if '-' in str(x) else str(x))
+                    ax_d2.set_xticks(x_pos)
+                    ax_d2.set_xticklabels(short_names, rotation=35, ha='right', fontsize=6.5, color='#CCCCCC')
+                    ax_d2.set_title("Top 15 Tiendas - Empleados", color='white', pad=6, fontweight='bold', fontsize=9.0)
+                    ax_d2.tick_params(axis='y', colors='#CCCCCC', labelsize=6.5)
+                    ax_d2.spines['top'].set_visible(False)
+                    ax_d2.spines['right'].set_visible(False)
+                    for i, v in enumerate(df_top['Cantidad']):
+                        ax_d2.text(i, v + (df_top['Cantidad'].max() * 0.02), str(v), color='white', ha='center', fontsize=6.5)
+                    
+                    # Preparar data ax_d3
+                    df_t_filt['Region'] = df_t_filt['Tienda'].map(regiones.REGIONES).fillna('OTRO')
+                    df_r_filt = df_t_filt.groupby('Region')['Cantidad'].sum().reset_index().rename(columns={'Cantidad':'Empleados'}).sort_values('Empleados', ascending=False)
+                    
+                    x_pos2 = np.arange(len(df_r_filt))
+                    ax_d3.bar(x_pos2, df_r_filt['Empleados'], color=C_MAGENTA, width=0.5)
+                    ax_d3.set_xticks(x_pos2)
+                    ax_d3.set_xticklabels(df_r_filt['Region'], rotation=25, ha='right', fontsize=6.5, color='#CCCCCC')
+                    ax_d3.set_title("Empleados por Región", color='white', pad=6, fontweight='bold', fontsize=9.0)
+                    ax_d3.tick_params(axis='y', colors='#CCCCCC', labelsize=6.5)
+                    ax_d3.spines['top'].set_visible(False)
+                    ax_d3.spines['right'].set_visible(False)
+                    for i, v in enumerate(df_r_filt['Empleados']):
+                        ax_d3.text(i, v + (df_r_filt['Empleados'].max() * 0.02), str(v), color='white', ha='center', fontsize=6.5)
+
+            if not has_data:
+                for ax in [ax_d2, ax_d3]:
+                    ax.axis('off')
+                    ax.text(0.5, 0.5, "Sin Datos de Empleados", color='#555555', ha='center', va='center', fontsize=12, fontweight='bold')
+                    
+        except Exception as e:
+            self.log(f"[WARN] No se pudo cargar gráficos RRHH: {e}")
 
         # Dona 4: Margen General
         ax_d4 = fig.add_subplot(gs[1, 3])
         ing_total_m = df_plot['INGRESOS TOTALES (USD)'].sum()
+        # Para el costo total m necesitamos recalcular sin la columna region si está
+        tot_prorr = df_plot['GASTO APLICADO (PRORRATEO)'].sum()
+        tot_dir = df_plot[gastos_cols].sum().sum() if gastos_cols else 0
         costo_total_m = tot_prorr + tot_dir
         rent_total = max(ing_total_m - costo_total_m, 0)
         margen_pct = (rent_total / ing_total_m * 100) if ing_total_m > 0 else 0
@@ -746,7 +837,7 @@ class CierreContableApp(ctk.CTk):
             p_cost = (costo_total_m / ing_total_m * 100) if ing_total_m > 0 else 0
             labs_d4 = [f"Rentabilidad: {fmt_monto(rent_total)} ({p_rent:.1f}%)", f"Costo Total: {fmt_monto(costo_total_m)} ({p_cost:.1f}%)"]
             draw_donut(ax_d4, [rent_total, costo_total_m], labs_d4, [C_CYAN, '#383838'], "Margen General", center_top="Margen", center_sub=f"{margen_pct:.1f}%")
-
+            
         return fig
 
     def _conectar_hover_curva(self, canvas, fig):
@@ -811,22 +902,28 @@ class CierreContableApp(ctk.CTk):
         if df.empty: return
 
         # 2. Calcular Variables para Tarjetas KPI (Totalmente Dinámicas)
-        ingresos_totales = df['INGRESOS TOTALES (USD)'].sum()
+        # Sumar usando 'ingreso' y 'otros_ingresos' desde la matriz
+        if 'ingreso' in df.columns and 'otros_ingresos' in df.columns:
+            ingresos_totales = df['ingreso'].sum() + df['otros_ingresos'].sum()
+        else:
+            ingresos_totales = df['INGRESOS TOTALES (USD)'].sum()
+            
+        costo_directo = df['costo_directo'].sum() if 'costo_directo' in df.columns else 0
         gastos_prorrateo = df['GASTO APLICADO (PRORRATEO)'].sum()
         
-        cols_base = ['CENTRO DE COSTO / TIENDA', 'INGRESOS TOTALES (USD)', '% IMPACTO', 'GASTO APLICADO (PRORRATEO)']
-        gastos_cols = [c for c in df.columns if c not in cols_base and c != '% IMPACTO NUM']
+        cols_base = ['CENTRO DE COSTO / TIENDA', 'INGRESOS TOTALES (USD)', '% IMPACTO', 'GASTO APLICADO (PRORRATEO)', 'REGION', 'ingreso', 'otros_ingresos', 'costo_directo']
+        import pandas as pd
+        gastos_cols = [c for c in df.columns if c not in cols_base and c != '% IMPACTO NUM' and pd.api.types.is_numeric_dtype(df[c])]
         gastos_directos = df[gastos_cols].sum().sum() if gastos_cols else 0
         
         gasto_total_real = gastos_prorrateo + gastos_directos
-        rentabilidad = ingresos_totales - gasto_total_real
-        margen = (rentabilidad / ingresos_totales * 100) if ingresos_totales > 0 else 0
+        margen = ((ingresos_totales - costo_directo) / ingresos_totales * 100) if ingresos_totales > 0 else 0
 
         # Dibujar Tarjetas
         self._crear_kpi_card(self.kpi_container, "Ingresos Totales", f"${ingresos_totales:,.2f}", C_CYAN)
         self._crear_kpi_card(self.kpi_container, "Gastos Detectados", f"${gasto_total_real:,.2f}", C_MAGENTA)
-        self._crear_kpi_card(self.kpi_container, "Rentabilidad Neta", f"${rentabilidad:,.2f}", C_LIME if rentabilidad >= 0 else BTN_DANGER)
-        self._crear_kpi_card(self.kpi_container, "Margen %", f"{margen:.1f}%", C_YELLOW)
+        self._crear_kpi_card(self.kpi_container, "COSTO_DIRECTO", f"${costo_directo:,.2f}", C_LIME if costo_directo >= 0 else BTN_DANGER)
+        self._crear_kpi_card(self.kpi_container, "MARGEN BRUTO", f"{margen:.2f}%", C_YELLOW)
 
         # 3. Dibujar Matplotlib
         fig = self._crear_figura_dashboard(df, periodo, tienda_seleccionada=tienda_seleccionada)
@@ -859,10 +956,23 @@ class CierreContableApp(ctk.CTk):
         combo_periodo_amp = ctk.CTkComboBox(dash_filter_frame_amp, values=self.combo_periodo.cget("values"), width=120)
         combo_periodo_amp.set(self.combo_periodo.get())
         combo_periodo_amp.pack(side="left", padx=5)
-        
-        combo_ciudad_amp = ctk.CTkComboBox(dash_filter_frame_amp, values=self.combo_ciudad.cget("values"), width=220, command=lambda _: aplicar_filtro_ampliado())
+        def _on_ciudad_amp_sel(val):
+            if val != "Todas las Ciudades":
+                combo_region_amp.set("Todas las Regiones")
+            aplicar_filtro_ampliado()
+            
+        def _on_region_amp_sel(val):
+            if val != "Todas las Regiones":
+                combo_ciudad_amp.set("Todas las Ciudades")
+            aplicar_filtro_ampliado()
+
+        combo_ciudad_amp = ctk.CTkComboBox(dash_filter_frame_amp, values=self.combo_ciudad.cget("values"), width=220, command=_on_ciudad_amp_sel)
         combo_ciudad_amp.set(self.combo_ciudad.get())
         combo_ciudad_amp.pack(side="left", padx=5)
+        
+        combo_region_amp = ctk.CTkComboBox(dash_filter_frame_amp, values=self.combo_region.cget("values"), width=180, command=_on_region_amp_sel)
+        combo_region_amp.set(self.combo_region.get())
+        combo_region_amp.pack(side="left", padx=5)
 
         kpi_container_amp = ctk.CTkFrame(vent_dash, fg_color="transparent", height=60)
         kpi_container_amp.pack(fill="x", padx=10, pady=(0, 5))
@@ -874,7 +984,6 @@ class CierreContableApp(ctk.CTk):
         def aplicar_filtro_ampliado():
             per_sel = combo_periodo_amp.get()
             ciu_sel = combo_ciudad_amp.get()
-
             if per_sel != self.periodo_actual:
                 self.combo_periodo.set(per_sel)
                 self.periodo_entry.delete(0, 'end')
@@ -885,25 +994,42 @@ class CierreContableApp(ctk.CTk):
                 return
 
             df_filtro = self.df_actual.copy()
+            import regiones
+            df_filtro['REGION'] = df_filtro['CENTRO DE COSTO / TIENDA'].map(regiones.REGIONES).fillna("OTRO")
+            
+            ciu_sel = combo_ciudad_amp.get()
+            reg_sel = combo_region_amp.get()
+            
             tienda_sel = None
             if ciu_sel != "Todas las Ciudades":
                 tienda_sel = ciu_sel
                 df_filtro = df_filtro[df_filtro['CENTRO DE COSTO / TIENDA'] == ciu_sel]
+            elif reg_sel != "Todas las Regiones":
+                df_filtro = df_filtro[df_filtro['REGION'] == reg_sel]
                 
             for w in kpi_container_amp.winfo_children(): w.destroy()
             for w in chart_frame_amp.winfo_children(): w.destroy()
             
-            ing_tot = df_filtro['INGRESOS TOTALES (USD)'].sum()
-            gastos_prorr = df_filtro['GASTO APLICADO (PRORRATEO)'].sum()
-            cols_gastos = [c for c in df_filtro.columns if c not in ['CENTRO DE COSTO / TIENDA', 'INGRESOS TOTALES (USD)', '% IMPACTO', 'GASTO APLICADO (PRORRATEO)', '% IMPACTO NUM']]
-            gasto_total = gastos_prorr + (df_filtro[cols_gastos].sum().sum() if cols_gastos else 0)
-            rentabilidad = ing_tot - gasto_total
-            margen = (rentabilidad / ing_tot * 100) if ing_tot > 0 else 0
+            if 'ingreso' in df_filtro.columns and 'otros_ingresos' in df_filtro.columns:
+                ingresos_totales = df_filtro['ingreso'].sum() + df_filtro['otros_ingresos'].sum()
+            else:
+                ingresos_totales = df_filtro['INGRESOS TOTALES (USD)'].sum()
+                
+            costo_directo = df_filtro['costo_directo'].sum() if 'costo_directo' in df_filtro.columns else 0
+            gastos_prorrateo = df_filtro['GASTO APLICADO (PRORRATEO)'].sum()
+            
+            cols_base = ['CENTRO DE COSTO / TIENDA', 'INGRESOS TOTALES (USD)', '% IMPACTO', 'GASTO APLICADO (PRORRATEO)', '% IMPACTO NUM', 'REGION', 'ingreso', 'otros_ingresos', 'costo_directo']
+            import pandas as pd
+            gastos_cols = [c for c in df_filtro.columns if c not in cols_base and pd.api.types.is_numeric_dtype(df_filtro[c])]
+            gastos_directos = df_filtro[gastos_cols].sum().sum() if gastos_cols else 0
+            
+            gasto_total_real = gastos_prorrateo + gastos_directos
+            margen = ((ingresos_totales - costo_directo) / ingresos_totales * 100) if ingresos_totales > 0 else 0
 
-            self._crear_kpi_card(kpi_container_amp, "Ingresos Totales", f"${ing_tot:,.2f}", C_CYAN)
-            self._crear_kpi_card(kpi_container_amp, "Gastos Detectados", f"${gasto_total:,.2f}", C_MAGENTA)
-            self._crear_kpi_card(kpi_container_amp, "Rentabilidad Neta", f"${rentabilidad:,.2f}", C_LIME if rentabilidad >= 0 else BTN_DANGER)
-            self._crear_kpi_card(kpi_container_amp, "Margen %", f"{margen:.1f}%", C_YELLOW)
+            self._crear_kpi_card(kpi_container_amp, "Ingresos Totales", f"${ingresos_totales:,.2f}", C_CYAN)
+            self._crear_kpi_card(kpi_container_amp, "Gastos Detectados", f"${gasto_total_real:,.2f}", C_MAGENTA)
+            self._crear_kpi_card(kpi_container_amp, "COSTO_DIRECTO", f"${costo_directo:,.2f}", C_LIME if costo_directo >= 0 else BTN_DANGER)
+            self._crear_kpi_card(kpi_container_amp, "MARGEN BRUTO", f"{margen:.2f}%", C_YELLOW)
 
             fig_nueva = self._crear_figura_dashboard(df_filtro, per_sel, tienda_seleccionada=tienda_sel)
             canvas_nuevo = FigureCanvasTkAgg(fig_nueva, master=chart_frame_amp)
