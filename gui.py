@@ -10,6 +10,7 @@ import geodata
 import requests
 import threading
 import numpy as np
+from ctk_scrollable_dropdown import CTkScrollableDropdown
 
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
@@ -196,6 +197,16 @@ class CierreContableApp(ctk.CTk):
         self.btn_salir = ctk.CTkButton(self.sidebar_frame, text="✖ CERRAR", fg_color=BTN_DANGER, hover_color=BTN_DANGER_HOVER, font=("Roboto", 12, "bold"), command=self.cerrar_app)
         self.btn_salir.grid(row=19, column=0, padx=20, pady=(2, 15), sticky="ew")
 
+    def _actualizar_reloj(self):
+        from datetime import datetime
+        # Formato de 12 horas DD/MM/AAAA sin formato militar
+        ahora = datetime.now().strftime("%d/%m/%Y %I:%M:%S %p")
+        try:
+            self.lbl_reloj.configure(text=ahora)
+            self.after(1000, self._actualizar_reloj)
+        except Exception:
+            pass
+
     def toggle_sidebar(self):
         if self.sidebar_frame.winfo_viewable():
             self.sidebar_frame.grid_remove()
@@ -216,6 +227,11 @@ class CierreContableApp(ctk.CTk):
         self.btn_toggle_sidebar = ctk.CTkButton(self.top_bar, text="☰", width=40, fg_color="transparent", hover_color="#333333", font=("Roboto", 18), command=self.toggle_sidebar)
         # Inicia oculto porque el sidebar inicia visible
         self.btn_toggle_sidebar.pack_forget()
+
+        # Reloj principal en la barra superior (esquina derecha)
+        self.lbl_reloj = ctk.CTkLabel(self.top_bar, text="", font=("Roboto", 14, "bold"), text_color="white")
+        self.lbl_reloj.pack(side="right", padx=10)
+        self._actualizar_reloj()
 
         self.tab_view = ctk.CTkTabview(self.main_frame, fg_color=CANGURO_DARK_GREY, segmented_button_selected_color=CANGURO_YELLOW, segmented_button_selected_hover_color=CANGURO_YELLOW_HOVER, text_color=CANGURO_TEXT_DARK)
         self.tab_view.grid(row=1, column=0, sticky="nsew")
@@ -526,22 +542,47 @@ class CierreContableApp(ctk.CTk):
 
     def _actualizar_filtros_combobox(self, conn, df):
         """Llena la barra superior con las ciudades y meses históricos"""
+        
+        # 1. PERÍODO
         try:
             periodos = pd.read_sql_query("SELECT DISTINCT periodo_carga FROM historico_ingresos", conn)['periodo_carga'].tolist()
             if self.periodo_actual not in periodos:
                 periodos.append(self.periodo_actual)
             self.combo_periodo.configure(values=periodos)
+            
+            # --- INYECCIÓN DEL SCROLL PARA PERÍODO ---
+            if hasattr(self, 'scroll_periodo'):
+                self.scroll_periodo.destroy()
+            self.scroll_periodo = CTkScrollableDropdown(self.combo_periodo, values=periodos, command=lambda x: self.aplicar_filtro_dash(), justify="left", button_color="transparent")
+            # -----------------------------------------
+            
             self.combo_periodo.set(self.periodo_actual)
         except Exception:
             pass
 
-        tiendas = ["Todas las Ciudades"] + sorted(df['CENTRO DE COSTO / TIENDA'].tolist())
+        # 2. CIUDADES
+        todas_las_tiendas = df['CENTRO DE COSTO / TIENDA'].tolist()
+        tiendas_acronimo = [t for t in todas_las_tiendas if str(t).strip().startswith('[')]
+        tiendas = ["Todas las Ciudades"] + sorted(list(set(tiendas_acronimo)))
         self.combo_ciudad.configure(values=tiendas)
+        
+        if hasattr(self, 'scroll_ciudad'):
+            self.scroll_ciudad.destroy()
+        self.scroll_ciudad = CTkScrollableDropdown(self.combo_ciudad, values=tiendas, command=self._on_ciudad_selected, justify="left", button_color="transparent")
+        
         self.combo_ciudad.set("Todas las Ciudades")
 
+        # 3. REGIONES
         import regiones
         regs = ["Todas las Regiones"] + sorted(list(set(regiones.REGIONES.values())))
         self.combo_region.configure(values=regs)
+        
+        # --- INYECCIÓN DEL SCROLL PARA REGIÓN ---
+        if hasattr(self, 'scroll_region'):
+            self.scroll_region.destroy()
+        self.scroll_region = CTkScrollableDropdown(self.combo_region, values=regs, command=self._on_region_selected, justify="left", button_color="transparent")
+        # ----------------------------------------
+        
         self.combo_region.set("Todas las Regiones")
 
     def _on_ciudad_selected(self, val):
@@ -908,22 +949,22 @@ class CierreContableApp(ctk.CTk):
         else:
             ingresos_totales = df['INGRESOS TOTALES (USD)'].sum()
             
+        # Calcular costo directo y gastos
         costo_directo = df['costo_directo'].sum() if 'costo_directo' in df.columns else 0
-        gastos_prorrateo = df['GASTO APLICADO (PRORRATEO)'].sum()
+        gastos_prorrateo = df['GASTO APLICADO (PRORRATEO)'].sum() if 'GASTO APLICADO (PRORRATEO)' in df.columns else 0
+        gastos_directos = df['gasto'].sum() if 'gasto' in df.columns else 0
         
-        cols_base = ['CENTRO DE COSTO / TIENDA', 'INGRESOS TOTALES (USD)', '% IMPACTO', 'GASTO APLICADO (PRORRATEO)', 'REGION', 'ingreso', 'otros_ingresos', 'costo_directo']
-        import pandas as pd
-        gastos_cols = [c for c in df.columns if c not in cols_base and c != '% IMPACTO NUM' and pd.api.types.is_numeric_dtype(df[c])]
-        gastos_directos = df[gastos_cols].sum().sum() if gastos_cols else 0
-        
-        gasto_total_real = gastos_prorrateo + gastos_directos
+        if tienda_seleccionada and tienda_seleccionada != "Todas las Ciudades":
+            gasto_total_real = gastos_directos + gastos_prorrateo
+        else:
+            gasto_total_real = gastos_directos
         margen = ((ingresos_totales - costo_directo) / ingresos_totales * 100) if ingresos_totales > 0 else 0
 
-        # Dibujar Tarjetas
-        self._crear_kpi_card(self.kpi_container, "Ingresos Totales", f"${ingresos_totales:,.2f}", C_CYAN)
-        self._crear_kpi_card(self.kpi_container, "Gastos Detectados", f"${gasto_total_real:,.2f}", C_MAGENTA)
-        self._crear_kpi_card(self.kpi_container, "COSTO_DIRECTO", f"${costo_directo:,.2f}", C_LIME if costo_directo >= 0 else BTN_DANGER)
-        self._crear_kpi_card(self.kpi_container, "MARGEN BRUTO", f"{margen:.2f}%", C_YELLOW)
+        # Dibujar Tarjetas (Sin Decimales)
+        self._crear_kpi_card(self.kpi_container, "Ingresos Totales", f"${ingresos_totales:,.0f}", C_CYAN)
+        self._crear_kpi_card(self.kpi_container, "COSTO DIRECTO", f"${costo_directo:,.0f}", C_LIME if costo_directo >= 0 else BTN_DANGER)
+        self._crear_kpi_card(self.kpi_container, "Gastos Directos", f"${gasto_total_real:,.0f}", C_MAGENTA)
+        self._crear_kpi_card(self.kpi_container, "MARGEN BRUTO", f"{margen:.0f}%", C_YELLOW)
 
         # 3. Dibujar Matplotlib
         fig = self._crear_figura_dashboard(df, periodo, tienda_seleccionada=tienda_seleccionada)
@@ -941,36 +982,61 @@ class CierreContableApp(ctk.CTk):
         vent_dash.title(f"Dashboard BI Corporativo - {self.periodo_actual}")
         vent_dash.geometry("1400x800")
         vent_dash.configure(fg_color=CANGURO_BLACK)
+        
         try:
             ruta_ico = os.path.join(os.path.dirname(os.path.realpath(__file__)), "assets", "icono.ico")
             if os.path.exists(ruta_ico): vent_dash.after(200, lambda: vent_dash.iconbitmap(ruta_ico))
         except: pass
 
-        # --- REPLICAR EL FILTRO Y LAS TARJETAS EN PANTALLA COMPLETA ---
+        # --- AQUI ESTA LA VARIABLE QUE FALTABA (EL CONTENEDOR PRINCIPAL) ---
         dash_filter_frame_amp = ctk.CTkFrame(vent_dash, fg_color="#1A1A1A", corner_radius=8)
         dash_filter_frame_amp.pack(fill="x", padx=10, pady=(10, 5), ipadx=5, ipady=5)
         
         lbl_panel_amp = ctk.CTkLabel(dash_filter_frame_amp, text="📊 Panel Gerencial", font=("Roboto", 14, "bold"), text_color=CANGURO_YELLOW)
         lbl_panel_amp.pack(side="left", padx=10)
+
+        # Reloj ampliado en la barra superior (esquina derecha)
+        lbl_reloj_amp = ctk.CTkLabel(dash_filter_frame_amp, text="", font=("Roboto", 14, "bold"), text_color="white")
+        lbl_reloj_amp.pack(side="right", padx=10)
+
+        def _actualizar_reloj_amp():
+            from datetime import datetime
+            try:
+                lbl_reloj_amp.configure(text=datetime.now().strftime("%d/%m/%Y %I:%M:%S %p"))
+                vent_dash.after(1000, _actualizar_reloj_amp)
+            except Exception:
+                pass
+        _actualizar_reloj_amp()
         
-        combo_periodo_amp = ctk.CTkComboBox(dash_filter_frame_amp, values=self.combo_periodo.cget("values"), width=120)
-        combo_periodo_amp.set(self.combo_periodo.get())
-        combo_periodo_amp.pack(side="left", padx=5)
-        def _on_ciudad_amp_sel(val):
+        # --- FUNCIONES DE AUTO-ACTUALIZADO ---
+        def _on_periodo_amp_sel(val=None):
+            aplicar_filtro_ampliado()
+
+        def _on_ciudad_amp_sel(val=None):
             if val != "Todas las Ciudades":
                 combo_region_amp.set("Todas las Regiones")
             aplicar_filtro_ampliado()
             
-        def _on_region_amp_sel(val):
+        def _on_region_amp_sel(val=None):
             if val != "Todas las Regiones":
                 combo_ciudad_amp.set("Todas las Ciudades")
             aplicar_filtro_ampliado()
 
-        combo_ciudad_amp = ctk.CTkComboBox(dash_filter_frame_amp, values=self.combo_ciudad.cget("values"), width=220, command=_on_ciudad_amp_sel)
+        # --- 1. COMBO PERÍODO CON SCROLL ---
+        combo_periodo_amp = ctk.CTkComboBox(dash_filter_frame_amp, values=self.combo_periodo.cget("values"), width=120)
+        CTkScrollableDropdown(combo_periodo_amp, values=self.combo_periodo.cget("values"), command=_on_periodo_amp_sel, justify="left", button_color="transparent")
+        combo_periodo_amp.set(self.combo_periodo.get())
+        combo_periodo_amp.pack(side="left", padx=5)
+
+        # --- 2. COMBO CIUDAD CON SCROLL ---
+        combo_ciudad_amp = ctk.CTkComboBox(dash_filter_frame_amp, values=self.combo_ciudad.cget("values"), width=220)
+        CTkScrollableDropdown(combo_ciudad_amp, values=self.combo_ciudad.cget("values"), command=_on_ciudad_amp_sel, justify="left", button_color="transparent")
         combo_ciudad_amp.set(self.combo_ciudad.get())
         combo_ciudad_amp.pack(side="left", padx=5)
         
-        combo_region_amp = ctk.CTkComboBox(dash_filter_frame_amp, values=self.combo_region.cget("values"), width=180, command=_on_region_amp_sel)
+        # --- 3. COMBO REGIÓN CON SCROLL ---
+        combo_region_amp = ctk.CTkComboBox(dash_filter_frame_amp, values=self.combo_region.cget("values"), width=180)
+        CTkScrollableDropdown(combo_region_amp, values=self.combo_region.cget("values"), command=_on_region_amp_sel, justify="left", button_color="transparent")
         combo_region_amp.set(self.combo_region.get())
         combo_region_amp.pack(side="left", padx=5)
 
@@ -984,6 +1050,8 @@ class CierreContableApp(ctk.CTk):
         def aplicar_filtro_ampliado():
             per_sel = combo_periodo_amp.get()
             ciu_sel = combo_ciudad_amp.get()
+            reg_sel = combo_region_amp.get()
+
             if per_sel != self.periodo_actual:
                 self.combo_periodo.set(per_sel)
                 self.periodo_entry.delete(0, 'end')
@@ -996,9 +1064,6 @@ class CierreContableApp(ctk.CTk):
             df_filtro = self.df_actual.copy()
             import regiones
             df_filtro['REGION'] = df_filtro['CENTRO DE COSTO / TIENDA'].map(regiones.REGIONES).fillna("OTRO")
-            
-            ciu_sel = combo_ciudad_amp.get()
-            reg_sel = combo_region_amp.get()
             
             tienda_sel = None
             if ciu_sel != "Todas las Ciudades":
@@ -1016,20 +1081,21 @@ class CierreContableApp(ctk.CTk):
                 ingresos_totales = df_filtro['INGRESOS TOTALES (USD)'].sum()
                 
             costo_directo = df_filtro['costo_directo'].sum() if 'costo_directo' in df_filtro.columns else 0
-            gastos_prorrateo = df_filtro['GASTO APLICADO (PRORRATEO)'].sum()
+            gastos_prorrateo = df_filtro['GASTO APLICADO (PRORRATEO)'].sum() if 'GASTO APLICADO (PRORRATEO)' in df_filtro.columns else 0
+            gastos_directos = df_filtro['gasto'].sum() if 'gasto' in df_filtro.columns else 0
             
-            cols_base = ['CENTRO DE COSTO / TIENDA', 'INGRESOS TOTALES (USD)', '% IMPACTO', 'GASTO APLICADO (PRORRATEO)', '% IMPACTO NUM', 'REGION', 'ingreso', 'otros_ingresos', 'costo_directo']
-            import pandas as pd
-            gastos_cols = [c for c in df_filtro.columns if c not in cols_base and pd.api.types.is_numeric_dtype(df_filtro[c])]
-            gastos_directos = df_filtro[gastos_cols].sum().sum() if gastos_cols else 0
-            
-            gasto_total_real = gastos_prorrateo + gastos_directos
+            if ciu_sel and ciu_sel != "Todas las Ciudades":
+                gasto_total_real = gastos_directos + gastos_prorrateo
+            else:
+                gasto_total_real = gastos_directos
+                
             margen = ((ingresos_totales - costo_directo) / ingresos_totales * 100) if ingresos_totales > 0 else 0
 
-            self._crear_kpi_card(kpi_container_amp, "Ingresos Totales", f"${ingresos_totales:,.2f}", C_CYAN)
-            self._crear_kpi_card(kpi_container_amp, "Gastos Detectados", f"${gasto_total_real:,.2f}", C_MAGENTA)
-            self._crear_kpi_card(kpi_container_amp, "COSTO_DIRECTO", f"${costo_directo:,.2f}", C_LIME if costo_directo >= 0 else BTN_DANGER)
-            self._crear_kpi_card(kpi_container_amp, "MARGEN BRUTO", f"{margen:.2f}%", C_YELLOW)
+            # Redibujar Tarjetas Ampliadas (Sin Decimales)
+            self._crear_kpi_card(kpi_container_amp, "Ingresos Totales", f"${ingresos_totales:,.0f}", C_CYAN)
+            self._crear_kpi_card(kpi_container_amp, "COSTO DIRECTO", f"${costo_directo:,.0f}", C_LIME if costo_directo >= 0 else BTN_DANGER)
+            self._crear_kpi_card(kpi_container_amp, "Gastos Directos", f"${gasto_total_real:,.0f}", C_MAGENTA)
+            self._crear_kpi_card(kpi_container_amp, "MARGEN BRUTO", f"{margen:.0f}%", C_YELLOW)
 
             fig_nueva = self._crear_figura_dashboard(df_filtro, per_sel, tienda_seleccionada=tienda_sel)
             canvas_nuevo = FigureCanvasTkAgg(fig_nueva, master=chart_frame_amp)
@@ -1037,9 +1103,6 @@ class CierreContableApp(ctk.CTk):
             canvas_nuevo.get_tk_widget().pack(fill="both", expand=True)
             self._conectar_hover_curva(canvas_nuevo, fig_nueva)
 
-        btn_filtrar_amp = ctk.CTkButton(dash_filter_frame_amp, text="🔍 Aplicar Filtro", fg_color="#1F4E79", width=100, command=aplicar_filtro_ampliado)
-        btn_filtrar_amp.pack(side="left", padx=5)
-        
         # Ejecutar la primera vez para llenar la pantalla
         aplicar_filtro_ampliado()
 

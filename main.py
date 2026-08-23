@@ -169,7 +169,10 @@ def calcular_rentabilidad(periodo, ruta_bd, porcentajes_manuales=None, log_callb
                 if col not in df_pivot.columns:
                     df_pivot[col] = 0
                 else:
-                    df_pivot[col] = df_pivot[col].abs()
+                    if col in ['ingreso', 'otros_ingresos']:
+                        df_pivot[col] = df_pivot[col] * -1
+                    else:
+                        pass # Dejar los gastos y costos con su signo real para respetar reembolsos
                     
             df_resumen = df_pivot.copy()
             df_resumen['INGRESOS TOTALES (USD)'] = df_resumen['ingreso'] + df_resumen['otros_ingresos']
