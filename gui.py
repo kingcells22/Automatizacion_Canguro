@@ -66,6 +66,7 @@ class CierreContableApp(ctk.CTk):
         self.df_actual = None 
         self.porcentajes_manuales = {}
         self.periodo_actual = ""
+        self.offsets = {'ingresos': 0, 'edr': 0, 'empleados': 0}
         self.limpiar_rutas()
 
         self._crear_ventana_terminal()
@@ -152,7 +153,7 @@ class CierreContableApp(ctk.CTk):
         self.btn_edr.grid(row=5, column=0, padx=20, pady=2, sticky="ew")
 
         self.btn_promedio = ctk.CTkButton(self.sidebar_frame, text="📄 Excel Promedios", fg_color="#333333", hover_color="#555555", command=lambda: self.cargar_archivo("promedios"))
-        self.btn_promedio.grid(row=6, column=0, padx=20, pady=2, sticky="ew")
+        # self.btn_promedio.grid(row=6, column=0, padx=20, pady=2, sticky="ew")  # Oculto por requerimiento
 
         self.btn_empleados = ctk.CTkButton(self.sidebar_frame, text="👥 Excel Empleados", fg_color="#1F4E79", hover_color="#296296", command=lambda: self.cargar_archivo("empleados"))
         self.btn_empleados.grid(row=7, column=0, padx=20, pady=(2, 0), sticky="ew")
@@ -173,29 +174,39 @@ class CierreContableApp(ctk.CTk):
         self.btn_editar_tasa = ctk.CTkButton(self.tasa_frame, text="✏️", width=30, fg_color="#333333", hover_color="#555555", command=self.editar_tasa_manual)
         self.btn_editar_tasa.grid(row=0, column=1, padx=(5, 0), sticky="e")
 
-        self.lbl_paso3 = ctk.CTkLabel(self.sidebar_frame, text="3. Período", font=("Roboto", 13, "bold"))
+        self.lbl_paso3 = ctk.CTkLabel(self.sidebar_frame, text="3. Filtro de Períodos", font=("Roboto", 13, "bold"))
         self.lbl_paso3.grid(row=12, column=0, padx=20, pady=(10, 0), sticky="w")
         
-        self.periodo_entry = ctk.CTkEntry(self.sidebar_frame, placeholder_text="Ej: 2026-07")
-        self.periodo_entry.grid(row=13, column=0, padx=20, pady=2, sticky="ew")
-        self.periodo_entry.bind("<Return>", lambda event: self.procesar_mes())
+        self.frame_periodos = ctk.CTkFrame(self.sidebar_frame, fg_color="transparent")
+        self.frame_periodos.grid(row=13, column=0, padx=20, pady=2, sticky="ew")
+        self.frame_periodos.grid_columnconfigure((0, 1), weight=1)
 
-        self.btn_procesar = ctk.CTkButton(self.sidebar_frame, text="⚡ Procesar y Consolidar", fg_color=CANGURO_YELLOW, text_color=CANGURO_TEXT_DARK, hover_color=CANGURO_YELLOW_HOVER, font=("Roboto", 14, "bold"), command=self.procesar_mes)
+        from tkcalendar import DateEntry
+
+        self.periodo_desde = DateEntry(self.frame_periodos, width=12, background='#1F4E79', foreground='white', borderwidth=0, date_pattern='y-mm-dd')
+        self.periodo_desde.grid(row=0, column=0, padx=(0, 2), sticky="ew")
+        self.periodo_hasta = DateEntry(self.frame_periodos, width=12, background='#1F4E79', foreground='white', borderwidth=0, date_pattern='y-mm-dd')
+        self.periodo_hasta.grid(row=0, column=1, padx=(2, 0), sticky="ew")
+
+        self.btn_procesar = ctk.CTkButton(self.sidebar_frame, text="⚡ Consultar Histórico", fg_color=CANGURO_YELLOW, text_color=CANGURO_TEXT_DARK, hover_color=CANGURO_YELLOW_HOVER, font=("Roboto", 14, "bold"), command=self.procesar_mes)
         self.btn_procesar.grid(row=14, column=0, padx=20, pady=(15, 10), sticky="ew")
 
-        self.sidebar_frame.grid_rowconfigure(15, weight=1) 
+        self.btn_limpiar_bd = ctk.CTkButton(self.sidebar_frame, text="⚠️ LIMPIAR BASE DE DATOS", fg_color="#8B0000", hover_color="#A52A2A", font=("Roboto", 12, "bold"), command=self.limpiar_base_datos)
+        self.btn_limpiar_bd.grid(row=15, column=0, padx=20, pady=(2, 10), sticky="ew")
+
+        self.sidebar_frame.grid_rowconfigure(16, weight=1) 
 
         self.btn_export_excel = ctk.CTkButton(self.sidebar_frame, text="📊 Exportar Excel Final", fg_color="transparent", border_color=CANGURO_YELLOW, border_width=1, text_color=CANGURO_YELLOW, hover_color="#333333", command=self.exportar_excel)
-        self.btn_export_excel.grid(row=16, column=0, padx=20, pady=2, sticky="ew")
+        self.btn_export_excel.grid(row=17, column=0, padx=20, pady=2, sticky="ew")
 
         self.btn_export_bi = ctk.CTkButton(self.sidebar_frame, text="📈 Exportar CSV (PowerBI)", fg_color="transparent", border_color=CANGURO_YELLOW, border_width=1, text_color=CANGURO_YELLOW, hover_color="#333333", command=self.exportar_csv_bi)
-        self.btn_export_bi.grid(row=17, column=0, padx=20, pady=(2, 10), sticky="ew")
+        self.btn_export_bi.grid(row=18, column=0, padx=20, pady=(2, 10), sticky="ew")
 
         self.btn_terminal = ctk.CTkButton(self.sidebar_frame, text="💻 TERMINAL / LOGS", fg_color="#333333", hover_color="#555555", command=self.mostrar_terminal)
-        self.btn_terminal.grid(row=18, column=0, padx=20, pady=(2, 5), sticky="ew")
+        self.btn_terminal.grid(row=19, column=0, padx=20, pady=(2, 5), sticky="ew")
 
         self.btn_salir = ctk.CTkButton(self.sidebar_frame, text="✖ CERRAR", fg_color=BTN_DANGER, hover_color=BTN_DANGER_HOVER, font=("Roboto", 12, "bold"), command=self.cerrar_app)
-        self.btn_salir.grid(row=19, column=0, padx=20, pady=(2, 15), sticky="ew")
+        self.btn_salir.grid(row=20, column=0, padx=20, pady=(2, 15), sticky="ew")
 
     def _actualizar_reloj(self):
         from datetime import datetime
@@ -207,13 +218,76 @@ class CierreContableApp(ctk.CTk):
         except Exception:
             pass
 
+    def _actualizar_labels_tasa(self, text, color):
+        self.lbl_tasa.configure(text=text, text_color=color)
+        if hasattr(self, 'lbl_tasa_top'):
+            self.lbl_tasa_top.configure(text=text, text_color=color)
+
     def toggle_sidebar(self):
-        if self.sidebar_frame.winfo_viewable():
-            self.sidebar_frame.grid_remove()
-            self.btn_toggle_sidebar.pack(side="left", padx=10)
+        if getattr(self, 'sidebar_expanded', True):
+            # Ocultar panel (mostrar iconos)
+            self.titulo_label.grid_remove()
+            self.lbl_paso1.grid_remove()
+            self.lbl_paso2.grid_remove()
+            self.lbl_paso3.grid_remove()
+            self.tasa_frame.grid_remove()
+            self.frame_periodos.grid_remove()
+            self.logo_label.pack_forget()
+            
+            # Ajustar header
+            self.header_sidebar.grid(padx=5)
+            self.btn_toggle_in_sidebar.pack(anchor="center", expand=True)
+
+            botones = [
+                (self.btn_csv, "📄"), (self.btn_excel, "📄"), (self.btn_edr, "📄"), 
+                (self.btn_empleados, "👥"), (self.btn_limpiar, "🧹"),
+                (self.btn_procesar, "⚡"), (self.btn_limpiar_bd, "⚠️"),
+                (self.btn_export_excel, "📊"), (self.btn_export_bi, "📈"),
+                (self.btn_terminal, "💻"), (self.btn_salir, "✖")
+            ]
+            for btn, icon in botones:
+                btn.configure(text=icon, width=40)
+                btn.grid(padx=10)
+                
+            self.sidebar_frame.configure(width=60)
+            
+            # Mostrar tasa debajo del reloj
+            self.lbl_tasa_top.configure(text=self.lbl_tasa.cget("text"), text_color=self.lbl_tasa.cget("text_color"))
+            self.lbl_tasa_top.pack(anchor="e")
+            
+            self.sidebar_expanded = False
         else:
-            self.sidebar_frame.grid()
-            self.btn_toggle_sidebar.pack_forget()
+            # Mostrar panel completo
+            self.logo_label.pack(side="left", expand=True)
+            self.btn_toggle_in_sidebar.pack_forget()
+            self.btn_toggle_in_sidebar.pack(side="right")
+            
+            self.header_sidebar.grid(padx=20)
+            self.titulo_label.grid()
+            self.lbl_paso1.grid()
+            self.lbl_paso2.grid()
+            self.lbl_paso3.grid()
+            self.tasa_frame.grid()
+            self.frame_periodos.grid()
+            
+            botones = [
+                (self.btn_csv, "📄 CSV Bifrost"), (self.btn_excel, "📄 CSV Ingresos"), 
+                (self.btn_edr, "📄 Excel EDR"), (self.btn_empleados, "👥 Excel Empleados"), 
+                (self.btn_limpiar, "🧹 Limpiar Archivos"),
+                (self.btn_procesar, "⚡ Consultar Histórico"), (self.btn_limpiar_bd, "⚠️ LIMPIAR BASE DE DATOS"),
+                (self.btn_export_excel, "📊 Exportar Excel Final"), (self.btn_export_bi, "📈 Exportar CSV (PowerBI)"),
+                (self.btn_terminal, "💻 TERMINAL / LOGS"), (self.btn_salir, "✖ CERRAR")
+            ]
+            for btn, texto in botones:
+                btn.configure(text=texto, width=240)
+                btn.grid(padx=20)
+                
+            self.sidebar_frame.configure(width=280)
+            
+            # Ocultar tasa del header
+            self.lbl_tasa_top.pack_forget()
+            
+            self.sidebar_expanded = True
 
     def _crear_area_principal(self):
         self.main_frame = ctk.CTkFrame(self, fg_color="transparent")
@@ -224,13 +298,17 @@ class CierreContableApp(ctk.CTk):
 
         self.top_bar = ctk.CTkFrame(self.main_frame, height=30, fg_color="transparent")
         self.top_bar.grid(row=0, column=0, sticky="ew", pady=(0, 10))
-        self.btn_toggle_sidebar = ctk.CTkButton(self.top_bar, text="☰", width=40, fg_color="transparent", hover_color="#333333", font=("Roboto", 18), command=self.toggle_sidebar)
-        # Inicia oculto porque el sidebar inicia visible
-        self.btn_toggle_sidebar.pack_forget()
+        
+        self.reloj_tasa_frame = ctk.CTkFrame(self.top_bar, fg_color="transparent")
+        self.reloj_tasa_frame.pack(side="right", padx=10)
 
         # Reloj principal en la barra superior (esquina derecha)
-        self.lbl_reloj = ctk.CTkLabel(self.top_bar, text="", font=("Roboto", 14, "bold"), text_color="white")
-        self.lbl_reloj.pack(side="right", padx=10)
+        self.lbl_reloj = ctk.CTkLabel(self.reloj_tasa_frame, text="", font=("Roboto", 14, "bold"), text_color="white")
+        self.lbl_reloj.pack(anchor="e")
+        
+        self.lbl_tasa_top = ctk.CTkLabel(self.reloj_tasa_frame, text="", font=("Roboto", 12, "bold"), text_color=CANGURO_YELLOW)
+        self.lbl_tasa_top.pack_forget()
+        
         self._actualizar_reloj()
 
         self.tab_view = ctk.CTkTabview(self.main_frame, fg_color=CANGURO_DARK_GREY, segmented_button_selected_color=CANGURO_YELLOW, segmented_button_selected_hover_color=CANGURO_YELLOW_HOVER, text_color=CANGURO_TEXT_DARK)
@@ -244,9 +322,11 @@ class CierreContableApp(ctk.CTk):
 
         self.frame_t1, self.tree_ingresos = self._crear_arbol(self.tab_ingresos)
         self.frame_t1.pack(fill="both", expand=True)
+        self._crear_paginacion(self.tab_ingresos, 'ingresos')
 
         self.frame_t2, self.tree_edr = self._crear_arbol(self.tab_edr)
         self.frame_t2.pack(fill="both", expand=True)
+        self._crear_paginacion(self.tab_edr, 'edr')
 
         self.btn_ajuste_pct = ctk.CTkButton(self.tab_cierre, text="✏️ Ajustar % Impacto Manual", command=self.abrir_ventana_ajuste, fg_color="#1F4E79", hover_color="#296296")
         self.btn_ajuste_pct.pack(anchor="w", pady=(0, 5))
@@ -255,6 +335,7 @@ class CierreContableApp(ctk.CTk):
 
         self.frame_t4, self.tree_empleados = self._crear_arbol(self.tab_empleados)
         self.frame_t4.pack(fill="both", expand=True)
+        self._crear_paginacion(self.tab_empleados, 'empleados')
         
         # --- ZONA DASHBOARDS (BI) ---
         self.tab_dashboards.grid_columnconfigure(0, weight=1)
@@ -266,9 +347,6 @@ class CierreContableApp(ctk.CTk):
         
         lbl_panel = ctk.CTkLabel(self.dash_filter_frame, text="📊 Panel Gerencial", font=("Roboto", 14, "bold"), text_color=CANGURO_YELLOW)
         lbl_panel.pack(side="left", padx=10)
-        
-        self.combo_periodo = ctk.CTkComboBox(self.dash_filter_frame, values=["Periodo Actual"], width=120)
-        self.combo_periodo.pack(side="left", padx=5)
         
         self.combo_ciudad = ctk.CTkComboBox(self.dash_filter_frame, values=["Todas las Ciudades"], width=220, command=self._on_ciudad_selected)
         self.combo_ciudad.pack(side="left", padx=5)
@@ -303,6 +381,57 @@ class CierreContableApp(ctk.CTk):
         scroll_y.grid(row=0, column=1, sticky="ns")
         scroll_x.grid(row=1, column=0, sticky="ew")
         return frame, tree
+
+    def _crear_paginacion(self, parent, tabla):
+        frame_pag = ctk.CTkFrame(parent, fg_color="transparent", height=40)
+        frame_pag.pack(fill="x", pady=5)
+        
+        btn_prev = ctk.CTkButton(frame_pag, text="⬅ Anterior", width=100, command=lambda: self.cambiar_pagina(tabla, -100))
+        btn_prev.pack(side="left", padx=10)
+        
+        lbl_pag = ctk.CTkLabel(frame_pag, text="Registros 1 - 100", font=("Roboto", 12))
+        lbl_pag.pack(side="left", expand=True)
+        setattr(self, f"lbl_pag_{tabla}", lbl_pag)
+        
+        btn_next = ctk.CTkButton(frame_pag, text="Siguiente ➡", width=100, command=lambda: self.cambiar_pagina(tabla, 100))
+        btn_next.pack(side="right", padx=10)
+
+    def cambiar_pagina(self, tabla, delta):
+        if not hasattr(self, 'offsets'): self.offsets = {'ingresos': 0, 'edr': 0, 'empleados': 0}
+        nuevo_offset = self.offsets[tabla] + delta
+        if nuevo_offset < 0: nuevo_offset = 0
+        self.offsets[tabla] = nuevo_offset
+        
+        lbl = getattr(self, f"lbl_pag_{tabla}")
+        lbl.configure(text=f"Registros {nuevo_offset + 1} - {nuevo_offset + 100}")
+        
+        desde_raw = self.periodo_desde.get().strip()
+        hasta_raw = self.periodo_hasta.get().strip()
+        desde = desde_raw[:7] if len(desde_raw) >= 7 else desde_raw
+        hasta = hasta_raw[:7] if len(hasta_raw) >= 7 else hasta_raw
+        
+        threading.Thread(target=self._cargar_pagina, args=(tabla, desde, hasta, nuevo_offset), daemon=True).start()
+
+    def _cargar_pagina(self, tabla, desde, hasta, offset):
+        conn = None
+        try:
+            conn = sqlite3.connect(self.db_path)
+            if tabla == 'ingresos':
+                df = pd.read_sql_query(f"SELECT * FROM historico_ingresos WHERE periodo_carga BETWEEN ? AND ? LIMIT 100 OFFSET {offset}", conn, params=(desde, hasta))
+                if 'periodo_carga' in df.columns: df.drop(columns=['periodo_carga'], inplace=True)
+                self.after(0, self._llenar_tabla, self.tree_ingresos, df)
+            elif tabla == 'edr':
+                df = pd.read_sql_query(f"SELECT * FROM historico_bifrost WHERE periodo_carga BETWEEN ? AND ? LIMIT 100 OFFSET {offset}", conn, params=(desde, hasta))
+                if 'periodo_carga' in df.columns: df.drop(columns=['periodo_carga'], inplace=True)
+                self.after(0, self._llenar_tabla, self.tree_edr, df)
+            elif tabla == 'empleados':
+                df = pd.read_sql_query(f"SELECT * FROM historico_empleados WHERE periodo_carga BETWEEN ? AND ? LIMIT 100 OFFSET {offset}", conn, params=(desde, hasta))
+                if 'periodo_carga' in df.columns: df.drop(columns=['periodo_carga'], inplace=True)
+                self.after(0, self._llenar_tabla, self.tree_empleados, df)
+        except Exception as e:
+            self.log(f"[ERROR PAGINACIÓN] {e}")
+        finally:
+            if conn: conn.close()
 
     def abrir_ventana_ajuste(self):
         if self.df_actual is None or self.df_actual.empty:
@@ -373,7 +502,7 @@ class CierreContableApp(ctk.CTk):
             if response.status_code == 200:
                 self.tasa_bcv = float(response.json()['promedio'])
                 try:
-                    self.after(0, lambda: self.lbl_tasa.configure(text=f"🟢 BCV: {self.tasa_bcv:,.2f} Bs/$", text_color="#2E8B57"))
+                    self.after(0, lambda: self._actualizar_labels_tasa(f"🟢 BCV: {self.tasa_bcv:,.2f} Bs/$", "#2E8B57"))
                     self.after(0, lambda: self.log(f"[API] Tasa BCV: {self.tasa_bcv} Bs/$"))
                 except Exception: pass
                 return
@@ -383,14 +512,14 @@ class CierreContableApp(ctk.CTk):
             if response.status_code == 200:
                 self.tasa_bcv = float(response.json()['monitors']['bcv']['price'])
                 try:
-                    self.after(0, lambda: self.lbl_tasa.configure(text=f"🟢 BCV: {self.tasa_bcv:,.2f} Bs/$", text_color="#2E8B57"))
+                    self.after(0, lambda: self._actualizar_labels_tasa(f"🟢 BCV: {self.tasa_bcv:,.2f} Bs/$", "#2E8B57"))
                     self.after(0, lambda: self.log(f"[API] Tasa BCV: {self.tasa_bcv} Bs/$"))
                 except Exception: pass
                 return
             raise Exception("Servidores caídos.")
         except Exception:
             try:
-                self.after(0, lambda: self.lbl_tasa.configure(text="🔴 BCV: Fallo de red", text_color=BTN_DANGER))
+                self.after(0, lambda: self._actualizar_labels_tasa("🔴 BCV: Fallo de red", BTN_DANGER))
             except Exception: pass
 
     def editar_tasa_manual(self):
@@ -399,7 +528,7 @@ class CierreContableApp(ctk.CTk):
         if valor:
             try:
                 self.tasa_bcv = float(valor.replace(',', '.'))
-                self.lbl_tasa.configure(text=f"🟡 BCV (Manual): {self.tasa_bcv:,.2f} Bs/$", text_color=CANGURO_YELLOW)
+                self._actualizar_labels_tasa(f"🟡 BCV (Manual): {self.tasa_bcv:,.2f} Bs/$", CANGURO_YELLOW)
                 self.log(f"[SISTEMA] Tasa BCV fijada a: {self.tasa_bcv} Bs/$")
             except ValueError:
                 messagebox.showerror("Error", "Número inválido.")
@@ -448,6 +577,22 @@ class CierreContableApp(ctk.CTk):
             self.btn_empleados.configure(text="✅ Empleados", fg_color="#2E8B57")
             
         self.log(f"[ARCHIVO] {tipo.upper()} enrutado con éxito.")
+        
+        # Bloquear filtros de consulta durante modo ingesta
+        self.periodo_desde.configure(state="disabled")
+        self.periodo_hasta.configure(state="disabled")
+        self.btn_procesar.configure(text="⚡ INGESTAR AL HISTÓRICO", state="normal")
+
+    def limpiar_base_datos(self):
+        respuesta = messagebox.askyesno("Limpiar Base de Datos", "⚠️ ADVERTENCIA CRÍTICA: Esto eliminará de forma irreversible todo el histórico de la base de datos (Ingresos, Empleados, Bifrost).\n¿Estás completamente seguro de que deseas continuar?")
+        if respuesta:
+            import main
+            if main.limpiar_bd():
+                self.log("[SISTEMA] Base de datos histórica ELIMINADA.")
+                messagebox.showinfo("Éxito", "Base de datos borrada. Debe cargar los archivos necesarios para procesar el histórico nuevamente.")
+                self.limpiar_ui()
+            else:
+                self.log("[ERROR] No se pudo limpiar la base de datos.")
 
     def limpiar_ui(self):
         self.limpiar_rutas()
@@ -457,6 +602,10 @@ class CierreContableApp(ctk.CTk):
         self.btn_promedio.configure(text="📄 Excel Promedios", fg_color="#333333")
         self.btn_empleados.configure(text="👥 Excel Empleados", fg_color="#1F4E79")
         self.porcentajes_manuales.clear()
+        
+        self.periodo_desde.configure(state="normal")
+        self.periodo_hasta.configure(state="normal")
+        self.btn_procesar.configure(text="⚡ Consultar Histórico", state="normal")
         
         self.tree_ingresos.delete(*self.tree_ingresos.get_children())
         self.tree_edr.delete(*self.tree_edr.get_children())
@@ -487,52 +636,81 @@ class CierreContableApp(ctk.CTk):
             treeview.insert("", "end", values=[str(item) if pd.notnull(item) else "" for item in row], tags=("evenrow" if i % 2 == 0 else "oddrow",))
 
     def procesar_mes(self, recalcular=False):
-        periodo = self.periodo_entry.get().strip()
-        if not periodo:
-            if not recalcular: messagebox.showwarning("Advertencia", "Ingrese un período válido.")
-            return
+        desde_raw = self.periodo_desde.get().strip()
+        hasta_raw = self.periodo_hasta.get().strip()
         
-        self.periodo_actual = periodo
+        # Como la BD guarda YYYY-MM, cortamos hasta el mes si nos dan un día
+        desde = desde_raw[:7] if len(desde_raw) >= 7 else desde_raw
+        hasta = hasta_raw[:7] if len(hasta_raw) >= 7 else hasta_raw
+        
+        # Modo Consulta requiere fechas si no estamos ingiriendo
+        hay_archivos = any([self.ruta_bifrost, self.ruta_ingresos, self.ruta_edr, self.ruta_promedios, self.ruta_empleados])
+        if not hay_archivos and not (desde and hasta):
+            if not recalcular: messagebox.showwarning("Advertencia", "Por favor ingrese el rango (Desde y Hasta) para consultar.")
+            return
+            
+        self.periodo_actual = f"{desde} al {hasta}"
 
         if not recalcular:
+            self.offsets = {'ingresos': 0, 'edr': 0, 'empleados': 0}
+            try:
+                self.lbl_pag_ingresos.configure(text="Registros 1 - 100")
+                self.lbl_pag_edr.configure(text="Registros 1 - 100")
+                self.lbl_pag_empleados.configure(text="Registros 1 - 100")
+            except: pass
+
             for tree in [self.tree_ingresos, self.tree_edr, self.tree_cierre, self.tree_empleados]: tree.delete(*tree.get_children())
 
-            if any([self.ruta_bifrost, self.ruta_ingresos, self.ruta_edr, self.ruta_promedios, self.ruta_empleados]):
-                if not main.ingestar_datos(periodo, self.ruta_ingresos, self.ruta_bifrost, self.ruta_edr, self.ruta_promedios, self.ruta_empleados, log_callback=self.log):
-                    messagebox.showerror("Error", "Falló la ingesta. Revise la terminal.")
-                    return
+            if hay_archivos:
+                self.btn_procesar.configure(state="disabled", text="PROCESANDO...")
+                threading.Thread(target=self._hilo_ingesta_y_consulta, args=(desde, hasta), daemon=True).start()
+                return
             else:
-                if not messagebox.askyesno("Atención", "No hay archivos nuevos.\n\n¿Consultar la BD?"): return
+                threading.Thread(target=self._hilo_ingesta_y_consulta, args=(desde, hasta, False), daemon=True).start()
+                return
 
+    def _hilo_ingesta_y_consulta(self, desde, hasta, ingestar=True):
+        import main
+        if ingestar:
+            if not main.ingestar_datos(self.ruta_ingresos, self.ruta_bifrost, self.ruta_edr, self.ruta_promedios, self.ruta_empleados, log_callback=self.log):
+                self.after(0, lambda: messagebox.showerror("Error", "Falló la ingesta. Revise la terminal."))
+                self.after(0, lambda: self.btn_procesar.configure(state="normal", text="⚡ INGESTAR AL HISTÓRICO"))
+                return
+            self.after(0, lambda: messagebox.showinfo("Éxito", "Archivos procesados y añadidos al histórico. La UI se limpiará ahora."))
+            self.after(0, self.limpiar_ui)
+            return
+            
+        # MODO CONSULTA PURA
         conn = None
         try:
             conn = sqlite3.connect(self.db_path)
-            if not recalcular:
-                try: 
-                    df_ingresos = pd.read_sql_query("SELECT * FROM historico_ingresos WHERE periodo_carga = ? LIMIT 100", conn, params=(periodo,))
-                    if 'periodo_carga' in df_ingresos.columns: df_ingresos.drop(columns=['periodo_carga'], inplace=True)
-                    self._llenar_tabla(self.tree_ingresos, df_ingresos)
-                except: pass
-                try: 
-                    df_bifrost = pd.read_sql_query("SELECT * FROM historico_bifrost WHERE periodo_carga = ? LIMIT 100", conn, params=(periodo,))
-                    if 'periodo_carga' in df_bifrost.columns: df_bifrost.drop(columns=['periodo_carga'], inplace=True)
-                    self._llenar_tabla(self.tree_edr, df_bifrost)
-                except: pass
-                try: 
-                    df_empleados = pd.read_sql_query("SELECT * FROM historico_empleados WHERE periodo_carga = ? LIMIT 100", conn, params=(periodo,))
-                    if 'periodo_carga' in df_empleados.columns: df_empleados.drop(columns=['periodo_carga'], inplace=True)
-                    self._llenar_tabla(self.tree_empleados, df_empleados)
-                except Exception as e: 
-                    print(f"Error cargando tabla empleados: {e}")
-                    import traceback
-                    traceback.print_exc()
+            try: 
+                df_ingresos = pd.read_sql_query("SELECT * FROM historico_ingresos WHERE periodo_carga BETWEEN ? AND ? LIMIT 100", conn, params=(desde, hasta))
+                if 'periodo_carga' in df_ingresos.columns: df_ingresos.drop(columns=['periodo_carga'], inplace=True)
+                self.after(0, self._llenar_tabla, self.tree_ingresos, df_ingresos)
+            except: pass
+            try: 
+                df_bifrost = pd.read_sql_query("SELECT * FROM historico_bifrost WHERE periodo_carga BETWEEN ? AND ? LIMIT 100", conn, params=(desde, hasta))
+                if 'periodo_carga' in df_bifrost.columns: df_bifrost.drop(columns=['periodo_carga'], inplace=True)
+                self.after(0, self._llenar_tabla, self.tree_edr, df_bifrost)
+            except: pass
+            
+            try: 
+                df_empleados = pd.read_sql_query("SELECT * FROM historico_empleados WHERE periodo_carga BETWEEN ? AND ? LIMIT 100", conn, params=(desde, hasta))
+                if 'periodo_carga' in df_empleados.columns: df_empleados.drop(columns=['periodo_carga'], inplace=True)
+                self.after(0, self._llenar_tabla, self.tree_empleados, df_empleados)
+            except: pass
 
-            df_resultado = main.calcular_rentabilidad(periodo, self.db_path, self.porcentajes_manuales, log_callback=self.log)
+            df_resultado = main.calcular_rentabilidad(desde, hasta, self.db_path, self.porcentajes_manuales, log_callback=self.log)
             if not df_resultado.empty:
                 self.df_actual = df_resultado 
-                self._llenar_tabla(self.tree_cierre, df_resultado)
+                self.after(0, self._llenar_tabla, self.tree_cierre, df_resultado)
+                # Como self._actualizar_filtros_combobox hace queries, lo ejecuto aquí mismo en el hilo secundario
                 self._actualizar_filtros_combobox(conn, df_resultado)
-                self._dibujar_dashboards(df_resultado, periodo, tienda_seleccionada=None if self.combo_ciudad.get() == "Todas las Ciudades" else self.combo_ciudad.get())
+                
+                # Y el dibujado en el hilo principal
+                ciudad = None if self.combo_ciudad.get() == "Todas las Ciudades" else self.combo_ciudad.get()
+                self.after(0, self._dibujar_dashboards, df_resultado, self.periodo_actual, ciudad)
             else:
                 self.log("[INFO] Sin rentabilidad generada.")
                 
@@ -543,24 +721,7 @@ class CierreContableApp(ctk.CTk):
     def _actualizar_filtros_combobox(self, conn, df):
         """Llena la barra superior con las ciudades y meses históricos"""
         
-        # 1. PERÍODO
-        try:
-            periodos = pd.read_sql_query("SELECT DISTINCT periodo_carga FROM historico_ingresos", conn)['periodo_carga'].tolist()
-            if self.periodo_actual not in periodos:
-                periodos.append(self.periodo_actual)
-            self.combo_periodo.configure(values=periodos)
-            
-            # --- INYECCIÓN DEL SCROLL PARA PERÍODO ---
-            if hasattr(self, 'scroll_periodo'):
-                self.scroll_periodo.destroy()
-            self.scroll_periodo = CTkScrollableDropdown(self.combo_periodo, values=periodos, command=lambda x: self.aplicar_filtro_dash(), justify="left", button_color="transparent")
-            # -----------------------------------------
-            
-            self.combo_periodo.set(self.periodo_actual)
-        except Exception:
-            pass
-
-        # 2. CIUDADES
+        # 1. CIUDADES
         todas_las_tiendas = df['CENTRO DE COSTO / TIENDA'].tolist()
         tiendas_acronimo = [t for t in todas_las_tiendas if str(t).strip().startswith('[')]
         tiendas = ["Todas las Ciudades"] + sorted(list(set(tiendas_acronimo)))
@@ -600,15 +761,8 @@ class CierreContableApp(ctk.CTk):
         if self.df_actual is None or self.df_actual.empty:
             return
         
-        per_sel = self.combo_periodo.get()
         ciu_sel = self.combo_ciudad.get()
         reg_sel = self.combo_region.get()
-
-        if per_sel != self.periodo_actual:
-            self.periodo_entry.delete(0, 'end')
-            self.periodo_entry.insert(0, per_sel)
-            self.procesar_mes(recalcular=True)
-            return
 
         df_filtro = self.df_actual.copy()
         
@@ -622,7 +776,7 @@ class CierreContableApp(ctk.CTk):
         elif reg_sel != "Todas las Regiones":
             df_filtro = df_filtro[df_filtro['REGION'] == reg_sel]
             
-        self._dibujar_dashboards(df_filtro, per_sel, tienda_seleccionada=tienda_sel)
+        self._dibujar_dashboards(df_filtro, self.periodo_actual, tienda_seleccionada=tienda_sel)
 
 
     # ==========================================
@@ -670,7 +824,7 @@ class CierreContableApp(ctk.CTk):
         # Configurar la Cuadrícula: Margen superior optimizado para que los títulos nunca se corten
         gs = gridspec.GridSpec(2, 4, figure=fig, height_ratios=[1.60, 1.0], left=0.015, right=0.985, top=0.92, bottom=0.07, wspace=0.18, hspace=0.25)
 
-        cols_base = ['CENTRO DE COSTO / TIENDA', 'INGRESOS TOTALES (USD)', '% IMPACTO', 'GASTO APLICADO (PRORRATEO)', 'REGION', 'ingreso', 'otros_ingresos', 'costo_directo']
+        cols_base = ['CENTRO DE COSTO / TIENDA', 'INGRESOS TOTALES (USD)', '% IMPACTO', 'GASTO APLICADO (PRORRATEO)', 'REGION', 'ingresos', 'otros_ingresos', 'costo_directo']
         gastos_cols = [c for c in df.columns if c not in cols_base and c != '% IMPACTO NUM']
 
         df_plot = df.copy()
@@ -814,7 +968,11 @@ class CierreContableApp(ctk.CTk):
         try:
             import main
             import regiones
-            df_tiendas, _ = main.obtener_datos_dashboard(periodo, self.db_path)
+            if " al " in periodo:
+                d, h = periodo.split(" al ")
+            else:
+                d, h = periodo, periodo
+            df_tiendas, _ = main.obtener_datos_dashboard(d.strip(), h.strip(), self.db_path)
             
             has_data = False
             if df_tiendas is not None and not df_tiendas.empty:
@@ -943,16 +1101,16 @@ class CierreContableApp(ctk.CTk):
         if df.empty: return
 
         # 2. Calcular Variables para Tarjetas KPI (Totalmente Dinámicas)
-        # Sumar usando 'ingreso' y 'otros_ingresos' desde la matriz
-        if 'ingreso' in df.columns and 'otros_ingresos' in df.columns:
-            ingresos_totales = df['ingreso'].sum() + df['otros_ingresos'].sum()
+        # Sumar usando 'ingresos' y 'otros_ingresos' desde la matriz
+        if 'ingresos' in df.columns and 'otros_ingresos' in df.columns:
+            ingresos_totales = df['ingresos'].sum() + df['otros_ingresos'].sum()
         else:
             ingresos_totales = df['INGRESOS TOTALES (USD)'].sum()
             
         # Calcular costo directo y gastos
         costo_directo = df['costo_directo'].sum() if 'costo_directo' in df.columns else 0
         gastos_prorrateo = df['GASTO APLICADO (PRORRATEO)'].sum() if 'GASTO APLICADO (PRORRATEO)' in df.columns else 0
-        gastos_directos = df['gasto'].sum() if 'gasto' in df.columns else 0
+        gastos_directos = df['gastos'].sum() if 'gastos' in df.columns else 0
         
         if tienda_seleccionada and tienda_seleccionada != "Todas las Ciudades":
             gasto_total_real = gastos_directos + gastos_prorrateo
@@ -1054,8 +1212,17 @@ class CierreContableApp(ctk.CTk):
 
             if per_sel != self.periodo_actual:
                 self.combo_periodo.set(per_sel)
-                self.periodo_entry.delete(0, 'end')
-                self.periodo_entry.insert(0, per_sel)
+                import datetime
+                try:
+                    if " al " in per_sel:
+                        d, h = per_sel.split(" al ")
+                    else:
+                        d, h = per_sel, per_sel
+                    y1, m1 = map(int, d.split('-')[:2])
+                    y2, m2 = map(int, h.split('-')[:2])
+                    self.periodo_desde.set_date(datetime.date(y1, m1, 1))
+                    self.periodo_hasta.set_date(datetime.date(y2, m2, 28))
+                except: pass
                 self.procesar_mes(recalcular=True)
                 vent_dash.destroy()
                 self.abrir_dashboard_ampliado() 
@@ -1111,14 +1278,14 @@ class CierreContableApp(ctk.CTk):
     # ==========================================
     def exportar_excel(self):
         if self.df_actual is None or self.df_actual.empty: return
-        ruta = filedialog.asksaveasfilename(defaultextension=".xlsx", initialfile=f"Reporte_Rentabilidad_{self.periodo_entry.get().strip()}.xlsx", filetypes=[("Archivos de Excel", "*.xlsx")])
+        ruta = filedialog.asksaveasfilename(defaultextension=".xlsx", initialfile=f"Reporte_Rentabilidad_{self.periodo_actual}.xlsx", filetypes=[("Archivos de Excel", "*.xlsx")])
         if ruta: 
             self.df_actual.to_excel(ruta, index=False)
             messagebox.showinfo("Éxito", "Reporte Excel exportado correctamente.")
 
     def exportar_csv_bi(self):
         if self.df_actual is None or self.df_actual.empty: return
-        ruta = filedialog.asksaveasfilename(defaultextension=".csv", initialfile=f"Dataset_PowerBI_{self.periodo_entry.get().strip()}.csv", filetypes=[("Archivo CSV", "*.csv")])
+        ruta = filedialog.asksaveasfilename(defaultextension=".csv", initialfile=f"Dataset_PowerBI_{self.periodo_actual}.csv", filetypes=[("Archivo CSV", "*.csv")])
         if ruta: 
             self.df_actual.to_csv(ruta, index=False, sep=';', decimal=',', encoding='utf-8-sig')
             messagebox.showinfo("Éxito", "CSV exportado correctamente.")
